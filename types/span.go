@@ -1,6 +1,8 @@
 package types
 
 import (
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"time"
 )
@@ -19,6 +21,18 @@ func NewSpan(parent *Span, start *Mark, end *Mark) Span {
 		End:    end,
 		Name:   start.RemoveSuffix().Name,
 	}
+}
+
+// does this need to return an error?...
+func (s *Span) NameWithTimestampHash() (string, error) {
+	data, err := s.Start.Timestamp.MarshalBinary()
+	if err != nil {
+		return "", err
+	}
+
+	hash := sha256.Sum256(data)
+	hashString := base64.StdEncoding.EncodeToString(hash[:])
+	return s.Name + hashString, nil
 }
 
 func (s *Span) String() string {

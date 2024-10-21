@@ -102,13 +102,19 @@ func (db *DiskDb) GetAllMarks() (marks []*types.Mark, err error) {
 }
 
 func (db *DiskDb) CreateSpan(span *types.Span) error {
-	entryPath := db.spanEntryPath(span.Name)
+	name, err := span.NameWithTimestampHash()
+	if err != nil {
+		return err
+	}
+
+	entryPath := db.spanEntryPath(name)
 
 	if fileExists(entryPath) {
 		return fmt.Errorf("span '%s' already exists", span.Name)
 	}
 
-	data, err := db.spanEncoder.Encode(span)
+	var data []byte
+	data, err = db.spanEncoder.Encode(span)
 	if err != nil {
 		return err
 	}
@@ -117,12 +123,18 @@ func (db *DiskDb) CreateSpan(span *types.Span) error {
 }
 
 func (db *DiskDb) UpdateSpan(span *types.Span) error {
-	fullPath := db.spanEntryPath(span.Name)
+	name, err := span.NameWithTimestampHash()
+	if err != nil {
+		return err
+	}
+
+	fullPath := db.spanEntryPath(name)
 	if !fileExists(fullPath) {
 		return fmt.Errorf("span '%s' does not exist", span.Name)
 	}
 
-	encoded, err := db.spanEncoder.Encode(span)
+	var encoded []byte
+	encoded, err = db.spanEncoder.Encode(span)
 	if err != nil {
 		return err
 	}
