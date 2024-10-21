@@ -32,10 +32,9 @@ func (s *spanCommand) Exec() error {
 	}
 
 	markMap := newMarkMap(marks)
-	fmt.Printf("%v\n", markMap)
 	spans := markMap.getSpans()
-	for idx, span := range spans {
-		fmt.Printf("[%d] %+v\n", idx, span)
+	for _, span := range spans {
+		fmt.Printf("%v\n", &span)
 	}
 	return nil
 }
@@ -70,6 +69,7 @@ func (m *markMap) getSpans() []types.Span {
 
 	for name, startMark := range m.startMarks {
 		endMark := m.endMarks[name]
+		// TODO: handle parents
 		span := types.NewSpan(nil, startMark, endMark)
 		spans = append(spans, span)
 	}
