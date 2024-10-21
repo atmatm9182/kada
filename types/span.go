@@ -7,10 +7,10 @@ type Span struct {
 	name   string
 }
 
-func NewSpan(parent *Span, start Mark, end *Mark) Span {
+func NewSpan(parent *Span, start *Mark, end *Mark) Span {
 	return Span{
 		parent: parent,
-		start:  start,
+		start:  *start,
 		end:    end,
 		name:   start.RemoveSuffix().Name,
 	}

@@ -44,6 +44,30 @@ func (m *Mark) RemoveSuffix() Mark {
 	return mark
 }
 
+func (m *Mark) IsStart() bool {
+	return strings.HasSuffix(m.Name, "-start")
+}
+
+func (m *Mark) IsEnd() bool {
+	return strings.HasSuffix(m.Name, "-end")
+}
+
+func (m *Mark) String() string {
+	var description string
+	if len(m.Description) != 0 {
+		description = m.Description
+	} else {
+		description = "<empty>"
+	}
+
+	return fmt.Sprintf(
+		"Mark {name: %s, timestamp: %s, description: %s}",
+		m.Name,
+		m.Timestamp,
+		description,
+	)
+}
+
 func (m *Mark) withSuffix(suffix string) Mark {
 	mark := *m
 	mark.Name = fmt.Sprintf("%s-%s", m.Name, suffix)

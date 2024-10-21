@@ -11,9 +11,13 @@ import (
 	"github.com/atmatm9182/kada/db"
 )
 
-var cmds = map[string]command{
-	"start": newStartCmd(createAndSetupDiskDb()),
-	"end":   newEndCmd(createAndSetupDiskDb()),
+var cmds = make(map[string]command)
+
+func init() {
+	db := createAndSetupDiskDb()
+	cmds["start"] = newStartCmd(db)
+	cmds["end"] = newEndCmd(db)
+	cmds["span"] = newSpanCmd(db)
 }
 
 func createAndSetupDiskDb() db.Db {

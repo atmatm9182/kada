@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/atmatm9182/kada/types"
 )
@@ -12,6 +13,7 @@ type Db interface {
 	Setup() error
 	CreateMark(m *types.Mark) error
 	GetMark(name string) (*types.Mark, error)
+	GetAllMarks() ([]*types.Mark, error)
 }
 
 type DiskDb struct {
@@ -65,6 +67,34 @@ func (db *DiskDb) GetMark(name string) (m *types.Mark, err error) {
 	}
 
 	return db.markDecoder.Decode(data)
+}
+
+func (db *DiskDb) GetAllMarks() (marks []*types.Mark, err error) {
+	var entries []os.DirEntry
+	entries, err = os.ReadDir(db.storageDir)
+	if err != nil {
+		return
+	}
+
+	suffix := fmt.Sprintf(".%s", db.entryFileExt)
+	marks = make([]*types.Mark, 0)
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+
+		name := strings.TrimSuffix(entry.Name(), suffix)
+
+		var mark *types.Mark
+		mark, err = db.GetMark(name)
+		if err != nil {
+			return
+		}
+
+		marks = append(marks, mark)
+	}
+
+	return
 }
 
 func (db *DiskDb) createEntry(filename string) error {
