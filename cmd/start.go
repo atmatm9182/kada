@@ -37,5 +37,11 @@ func (s *startCmd) Exec() error {
 
 	mark := types.NewMark(args[0], description)
 	mark = mark.AsStart()
-	return s.db.CreateMark(&mark)
+	err := s.db.CreateMark(&mark)
+	if err != nil {
+		return err
+	}
+
+	span := types.NewSpan(nil, &mark, nil)
+	return s.db.CreateSpan(&span)
 }

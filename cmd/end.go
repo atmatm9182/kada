@@ -35,15 +35,19 @@ func (e *endCmd) Exec() error {
 		description = args[1]
 	}
 
-	markName := args[0]
+	endMark := types.NewMark(args[0], description)
 
-	endMark := types.NewMark(markName, description)
-
-	_, err := e.db.GetMark(endMark.AsStart().Name)
+	startMark, err := e.db.GetMark(endMark.AsStart().Name)
 	if err != nil {
 		return err
 	}
 
 	endMark = endMark.AsEnd()
-	return e.db.CreateMark(&endMark)
+
+	if err = e.db.DeleteMark(startMark.Name); err != nil {
+		return err
+	}
+
+	span := types.NewSpan(nil, startMark, &endMark)
+	return e.db.UpdateSpan(&span)
 }

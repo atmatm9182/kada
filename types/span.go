@@ -7,29 +7,29 @@ import (
 
 type Span struct {
 	parent *Span // maybe change this to have a child pointer?
-	start  Mark
-	end    *Mark
-	name   string
+	Start  Mark
+	End    *Mark
+	Name   string
 }
 
 func NewSpan(parent *Span, start *Mark, end *Mark) Span {
 	return Span{
 		parent: parent,
-		start:  *start,
-		end:    end,
-		name:   start.RemoveSuffix().Name,
+		Start:  *start,
+		End:    end,
+		Name:   start.RemoveSuffix().Name,
 	}
 }
 
 func (s *Span) String() string {
-	year, month, day := localDate(s.start.Timestamp)
-	hour, minute, second := localTime(s.start.Timestamp)
+	year, month, day := localDate(s.Start.Timestamp)
+	hour, minute, second := localTime(s.Start.Timestamp)
 
 	endedAt := "and still going"
 
-	if s.end != nil {
-		year, month, day := localDate(s.end.Timestamp)
-		hour, minute, second := localTime(s.end.Timestamp)
+	if s.End != nil {
+		year, month, day := localDate(s.End.Timestamp)
+		hour, minute, second := localTime(s.End.Timestamp)
 		endedAt = fmt.Sprintf(
 			"and ended at %02d/%02d/%d %02d:%02d:%02d",
 			year,
@@ -43,7 +43,7 @@ func (s *Span) String() string {
 
 	return fmt.Sprintf(
 		"%s: started at %02d/%02d/%d %02d:%02d:%02d %s",
-		s.name,
+		s.Name,
 		day,
 		month,
 		year,
