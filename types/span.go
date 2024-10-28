@@ -31,7 +31,7 @@ func (s *Span) NameWithTimestampHash() (string, error) {
 	}
 
 	hash := sha256.Sum256(data)
-	hashString := base64.StdEncoding.EncodeToString(hash[:])
+	hashString := base64.URLEncoding.EncodeToString(hash[:])
 	return s.Name + hashString, nil
 }
 
