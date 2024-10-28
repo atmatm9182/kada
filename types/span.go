@@ -46,9 +46,9 @@ func (s *Span) String() string {
 		hour, minute, second := localTime(s.End.Timestamp)
 		endedAt = fmt.Sprintf(
 			"and ended at %02d/%02d/%d %02d:%02d:%02d",
-			year,
-			month,
 			day,
+			month,
+			year,
 			hour,
 			minute,
 			second,
