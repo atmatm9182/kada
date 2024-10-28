@@ -17,8 +17,9 @@ type Db interface {
 	GetAllMarks() ([]*types.Mark, error)
 
 	CreateSpan(span *types.Span) error
+	DeleteSpan(name string) error
 	UpdateSpan(span *types.Span) error
-	GetAllSpans() ([]*types.Span, error)
+	GetAllSpans() (map[string]*types.Span, error)
 }
 
 type DiskDb struct {
@@ -122,6 +123,26 @@ func (db *DiskDb) CreateSpan(span *types.Span) error {
 	return os.WriteFile(entryPath, data, 0666)
 }
 
+func (db *DiskDb) DeleteSpan(name string) error {
+	spans, err := db.GetAllSpans()
+	if err != nil {
+		return err
+	}
+
+	span, ok := spans[name]
+	if !ok {
+		return fmt.Errorf("span '%s' does not exist", name)
+	}
+
+	name, err = span.NameWithTimestampHash()
+	if err != nil {
+		return err
+	}
+
+	fullPath := db.spanEntryPath(name)
+	return os.Remove(fullPath)
+}
+
 func (db *DiskDb) UpdateSpan(span *types.Span) error {
 	name, err := span.NameWithTimestampHash()
 	if err != nil {
@@ -147,8 +168,27 @@ func (db *DiskDb) GetSpan(name string) (*types.Span, error) {
 	return decodeFromFile(fullPath, db.spanDecoder)
 }
 
-func (db *DiskDb) GetAllSpans() (spans []*types.Span, err error) {
-	return decodeAllInDir(db.spanDir, db.spanDecoder)
+func (db *DiskDb) GetAllSpans() (spans map[string]*types.Span, err error) {
+	var entries []os.DirEntry
+	entries, err = os.ReadDir(db.spanDir)
+	if err != nil {
+		return
+	}
+
+	spans = make(map[string]*types.Span)
+	for _, entry := range entries {
+		fullPath := path.Join(db.spanDir, entry.Name())
+
+		var span *types.Span
+		span, err = decodeFromFile(fullPath, db.spanDecoder)
+		if err != nil {
+			return
+		}
+
+		spans[span.Name] = span
+	}
+
+	return
 }
 
 func decodeAllInDir[T any](
