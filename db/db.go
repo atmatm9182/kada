@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"slices"
 
 	"github.com/atmatm9182/kada/types"
 )
@@ -19,7 +20,7 @@ type Db interface {
 	CreateSpan(span *types.Span) error
 	DeleteSpan(name string) error
 	UpdateSpan(span *types.Span) error
-	GetAllSpans() (map[string]*types.Span, error)
+	GetAllSpans() ([]*types.Span, error)
 }
 
 type DiskDb struct {
@@ -129,10 +130,14 @@ func (db *DiskDb) DeleteSpan(name string) error {
 		return err
 	}
 
-	span, ok := spans[name]
-	if !ok {
-		return fmt.Errorf("span '%s' does not exist", name)
+	matchingSpans := slices.DeleteFunc(spans, func(span *types.Span) bool {
+		return span.Name != name
+	})
+	if len(matchingSpans) > 1 {
+		return fmt.Errorf("too many (%d) spans with name '%s'", len(matchingSpans), name)
 	}
+
+	span := spans[0]
 
 	// span is ongoing!
 	if span.End == nil {
@@ -175,14 +180,14 @@ func (db *DiskDb) GetSpan(name string) (*types.Span, error) {
 	return decodeFromFile(fullPath, db.spanDecoder)
 }
 
-func (db *DiskDb) GetAllSpans() (spans map[string]*types.Span, err error) {
+func (db *DiskDb) GetAllSpans() (spans []*types.Span, err error) {
 	var entries []os.DirEntry
 	entries, err = os.ReadDir(db.spanDir)
 	if err != nil {
 		return
 	}
 
-	spans = make(map[string]*types.Span)
+	spans = make([]*types.Span, 0, len(entries))
 	for _, entry := range entries {
 		fullPath := path.Join(db.spanDir, entry.Name())
 
@@ -192,7 +197,7 @@ func (db *DiskDb) GetAllSpans() (spans map[string]*types.Span, err error) {
 			return
 		}
 
-		spans[span.Name] = span
+		spans = append(spans, span)
 	}
 
 	return
