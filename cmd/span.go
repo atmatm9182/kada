@@ -54,14 +54,14 @@ func (s *spanCommand) Exec() error {
 		}
 
 		start := types.NewMark(args[0], "")
-		ts, err := time.Parse(time.DateTime, args[1])
+		ts, err := time.ParseInLocation(time.DateTime, args[1], time.Local)
 		if err != nil {
 			return err
 		}
 		start.Timestamp = ts
 
 		end := types.NewMark(args[0], "")
-		ts, err = time.Parse(time.DateTime, args[2])
+		ts, err = time.ParseInLocation(time.DateTime, args[2], time.Local)
 		if err != nil {
 			return err
 		}
