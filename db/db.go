@@ -134,6 +134,13 @@ func (db *DiskDb) DeleteSpan(name string) error {
 		return fmt.Errorf("span '%s' does not exist", name)
 	}
 
+	// span is ongoing!
+	if span.End == nil {
+		if err = db.DeleteMark(span.Start.Name); err != nil {
+			return err
+		}
+	}
+
 	name, err = span.NameWithTimestampHash()
 	if err != nil {
 		return err
