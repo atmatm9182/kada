@@ -7,7 +7,18 @@
             db-query-entry))
 
 ;;; Initialization code
-(define db (sqlite-open "kada.db"))
+(define default-data-dir
+  (string-append (getenv "HOME") "/.local/share"))
+
+(define db
+  (let* ((data-dir (match (getenv "XDG_DATA_DIR")
+                     (#f default-data-dir)
+                     ("" default-data-dir)
+                     (dir dir)))
+         (kada-dir (string-append data-dir "/kada")))
+    (when (not (file-exists? kada-dir))
+      (mkdir kada-dir)) ;; TODO: parent dirs
+    (sqlite-open (string-append kada-dir "/kada.db"))))
 
 (db-init)
 
