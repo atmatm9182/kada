@@ -10,7 +10,7 @@ guix package -f guix.scm
 
 ** Todo
 - [-] Basic entry and span creation subcommands
-- [ ] Store the DB file in a human location
+- [X] Store the DB file in a human location
 - [ ] Visualize spans with subspans
 - [ ] Export data
   - [ ] To CSV
