@@ -8,7 +8,7 @@ Using guix:
 guix package -f guix.scm
 #+END_SRC
 
-** TODO
+** Todo
 - [-] Basic entry and span creation subcommands
 - [ ] Store the DB file in a human location
 - [ ] Visualize spans with subspans
