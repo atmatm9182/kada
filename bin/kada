@@ -1,0 +1,24 @@
+#!/usr/bin/env sh
+# -*- mode: scheme; -*-
+exec guile --no-auto-compile -e main -s "$0" "$@"
+!#
+
+(use-modules (ice-9 match)
+             (srfi srfi-9)
+             (kada db)
+             (kada types))
+;; (print
+;;  (strftime "%c"
+;;            (localtime
+;;             (current-time))))
+
+(define main
+  (match-lambda
+    ((program args ...)
+     (db-insert-entry! (make-entry "hello world" (current-time) #f))
+     (display "Inserted successfully :)")
+     (newline))))
+
+(define *cmd-handlers*
+  '(("enter" . item-enter)
+    ("leave" . item-leave)))
