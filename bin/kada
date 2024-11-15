@@ -4,6 +4,7 @@ exec guile --no-auto-compile -e main -s "$0" "$@"
 !#
 
 (use-modules (ice-9 match)
+             (ice-9 format)
              (srfi srfi-9)
              (kada db)
              (kada types))
@@ -14,11 +15,24 @@ exec guile --no-auto-compile -e main -s "$0" "$@"
 
 (define main
   (match-lambda
-    ((program args ...)
-     (db-insert-entry! (make-entry "hello world" (current-time) #f))
-     (display "Inserted successfully :)")
-     (newline))))
+    ((program cmd rest ...)
+     (match (assoc cmd *cmd-handlers*)
+       (#f (error (format #f "Uncrecognized subcommand '~a'" cmd)))
+       ((_ . handler) (handler rest))))
+    ((program rest ...)
+     (error "No subcommand provided. Aborting."))))
+
+(define (item-enter args)
+  (when (not (= (length args) 1))
+    (error "Invalid number of arguments for 'enter'"))
+  (let* ((name (car args))
+         (entry (make-entry name (current-time) #f)))
+    (db-insert-entry! entry)
+    (format #t "Successfully created entry '~a'\n" name)))
+
+(define (item-leave args)
+  (error "TODO: item-leave"))
 
 (define *cmd-handlers*
-  '(("enter" . item-enter)
-    ("leave" . item-leave)))
+  `(("enter" . ,item-enter)
+    ("leave" . ,item-leave)))
