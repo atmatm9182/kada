@@ -26,9 +26,9 @@ exec guile --no-auto-compile -e main -s "$0" "$@"
   (when (not (= (length args) 1))
     (error "Invalid number of arguments for 'enter'"))
   (let* ((name (car args))
-         (entry (make-entry name (current-time) #f)))
-    (db-insert-entry! entry)
-    (format #t "Successfully created entry '~a'\n" name)))
+         (mark (make-mark name (current-time) #f #t)))
+    (db-insert-mark! mark)
+    (format #t "Successfully created mark '~a'\n" name)))
 
 (define (item-leave args)
   (error "TODO: item-leave"))

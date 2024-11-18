@@ -3,8 +3,8 @@
   #:use-module (kada types)
   #:use-module (sqlite3)
 
-  #:export (db-insert-entry!
-            db-query-entry))
+  #:export (db-insert-mark!
+            db-query-mark))
 
 ;;; Initialization code
 (define default-data-dir
@@ -20,19 +20,20 @@
       (mkdir kada-dir)) ;; TODO: parent dirs
     (sqlite-open (string-append kada-dir "/kada.db"))))
 
-(db-init)
+(db-init!)
 
 ;;; Procedures
-(define (db-init)
-  (db-create-entries-table!)
+(define (db-init!)
+  (db-create-marks-table!)
   (db-create-spans-table!))
 
-(define (db-create-entries-table!)
-  (sqlite-exec db "CREATE TABLE IF NOT EXISTS Entries (
+(define (db-create-marks-table!)
+  (sqlite-exec db "CREATE TABLE IF NOT EXISTS Marks (
            Id INTEGER PRIMARY KEY AUTOINCREMENT,
            Name TEXT NOT NULL,
            Timestamp INTEGER DEFAULT (unixepoch()) NOT NULL,
-           Description TEXT)"))
+           Description TEXT,
+           Enter INTEGER NOT NULL)"))
 
 (define (db-create-spans-table!)
   (sqlite-exec db "CREATE TABLE IF NOT EXISTS Spans (
@@ -40,22 +41,22 @@
            Name TEXT NOT NULL,
            StartId INTEGER NOT NULL,
            EndId INTEGER,
-           FOREIGN KEY(StartId) REFERENCES Entries(Id),
-           FOREIGN KEY(EndId) REFERENCES Entries(Id))"))
+           FOREIGN KEY(StartId) REFERENCES Marks(Id),
+           FOREIGN KEY(EndId) REFERENCES Marks(Id))"))
 
-(define db-prep-insert-entry
+(define db-prep-insert-mark
   (sqlite-prepare db
-                  "INSERT INTO Entries (Name, Timestamp, Description)
-                   VALUES (?, ?, ?)"))
+                  "INSERT INTO Marks (Name, Timestamp, Description, Enter)
+                   VALUES (?, ?, ?, ?)"))
 
-(define db-prep-query-entry
+(define db-prep-query-mark
   (sqlite-prepare db
-                  "SELECT Name, Timestamp, Description FROM Entries
+                  "SELECT Name, Timestamp, Description FROM Marks
                    WHERE Name = ?"))
 
-(define db-prep-query-latest-entry
+(define db-prep-query-latest-mark
   (sqlite-prepare db
-                  "SELECT Name, Timestamp, Description from Entries
+                  "SELECT Name, Timestamp, Description from Marks
                    ORDER BY Timestamp DESC LIMIT 1"))
 
 (define (use-prepared stmt . args)
@@ -64,19 +65,33 @@
   (sqlite-reset stmt)
   result)
 
-(define (db-insert-entry! entry)
-  (use-prepared db-prep-insert-entry
-                (entry-name entry)
-                (entry-timestamp entry)
-                (entry-description entry)))
+(define (db-insert-mark! mark)
+  (use-prepared db-prep-insert-mark
+                (mark-name mark)
+                (mark-timestamp mark)
+                (mark-description mark)
+                (bool-to-bit (mark-enter? mark))))
 
-(define (db-query-entry name)
-  (match (use-prepared db-prep-query-entry name)
+(define (db-query-mark name)
+  (match (use-prepared db-prep-query-mark name)
     (() #f)
-    ((#(name timestamp description) ...)
-     (map make-entry name timestamp description))))
+    ((#(name timestamp description enter?) ...)
+     (map (lambda (name timestamp description enter?)
+            (make-mark
+             name
+             timestamp
+             description
+             (= enter? 1)))
+          name
+          timestamp
+          description
+          enter?))))
 
-(define (db-query-latest-entry)
-  (match (use-prepared db-prep-query-latest-entry)
+(define (db-query-latest-mark)
+  (match (use-prepared db-prep-query-latest-mark)
     (() #f)
-    ((entry) entry)))
+    ((mark) mark)))
+
+;; Utility procedures
+(define (bool-to-bit b)
+  (if b 1 0))
