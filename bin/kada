@@ -1,5 +1,6 @@
 #!/usr/bin/env sh
 # -*- mode: scheme; -*-
+# vim: ft=scheme
 exec guile --no-auto-compile -e main -s "$0" "$@"
 !#
 
@@ -31,7 +32,19 @@ exec guile --no-auto-compile -e main -s "$0" "$@"
     (format #t "Successfully created mark '~a'\n" name)))
 
 (define (item-leave args)
-  (error "TODO: item-leave"))
+  (let ((last-mark (db-query-last-mark)))
+    (when (eq? last-mark #f)
+      (error "There are no marks"))
+
+    (let ((name (mark-name last-mark)))
+      (if (mark-enter? last-mark)
+        (begin
+          (db-insert-mark! (make-mark name
+                                     (current-time)
+                                     #f
+                                     #f))
+          (format #t "Successfully created mark '~a'\n" name))
+        (error "Last mark with name '~a' is not an entry mark" name)))))
 
 (define *cmd-handlers*
   `(("enter" . ,item-enter)

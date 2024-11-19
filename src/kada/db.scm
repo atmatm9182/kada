@@ -4,7 +4,8 @@
   #:use-module (sqlite3)
 
   #:export (db-insert-mark!
-            db-query-mark))
+            db-query-mark
+            db-query-last-mark))
 
 ;;; Initialization code
 (define default-data-dir
@@ -51,12 +52,12 @@
 
 (define db-prep-query-mark
   (sqlite-prepare db
-                  "SELECT Name, Timestamp, Description FROM Marks
+                  "SELECT Name, Timestamp, Description, Enter FROM Marks
                    WHERE Name = ?"))
 
-(define db-prep-query-latest-mark
+(define db-prep-query-last-mark
   (sqlite-prepare db
-                  "SELECT Name, Timestamp, Description from Marks
+                  "SELECT Name, Timestamp, Description, Enter from Marks
                    ORDER BY Timestamp DESC LIMIT 1"))
 
 (define (use-prepared stmt . args)
@@ -76,22 +77,25 @@
   (match (use-prepared db-prep-query-mark name)
     (() #f)
     ((#(name timestamp description enter?) ...)
-     (map (lambda (name timestamp description enter?)
-            (make-mark
-             name
-             timestamp
-             description
-             (= enter? 1)))
+     (map mark-from-row
           name
           timestamp
           description
           enter?))))
 
-(define (db-query-latest-mark)
-  (match (use-prepared db-prep-query-latest-mark)
+(define (db-query-last-mark)
+  (match (use-prepared db-prep-query-last-mark)
     (() #f)
-    ((mark) mark)))
+    ((row) (mark-from-row row))))
 
 ;; Utility procedures
 (define (bool-to-bit b)
   (if b 1 0))
+
+(define mark-from-row
+  (match-lambda
+    (#(name timestamp description enter?)
+     (make-mark name
+                timestamp
+                description
+                (= enter? 1)))))
