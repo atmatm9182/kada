@@ -36,10 +36,6 @@
                                          (wrap-program (string-append (assoc-ref outputs
                                                                                  "out")
                                                                       "/bin/kada")))))))
-   (native-inputs
-    (list guile-3.0
-          git
-          coreutils))
    (propagated-inputs
     (list guile-3.0
           guile-sqlite3
