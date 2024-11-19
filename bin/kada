@@ -64,7 +64,43 @@ exec guile --no-auto-compile -e main -s "$0" "$@"
                "There are no spans"
                result))))
 
+(define-syntax define-handler
+  (lambda (syn)
+    (syntax-case
+      syn ()
+      ((_ name args-check flags-spec body ...)
+       #`(define (name args flags)
+           (unless #,(datum->syntax #'syn
+                                    (reverse
+                                      (cons
+                                        (syntax->datum #'(length args))
+                                        (reverse (syntax->datum #'args-check)))))
+             (error "Invalid number of arguments"))
+           (let* ((allowed-flags #,(list #'quote
+                                         #'(syntax->datum flags-spec)))
+                  (bad-flag (list-any? (match-lambda
+                                         ((flag . value)
+                                          (not (member
+                                                 flag
+                                                 allowed-flags))))
+                                       flags)))
+             (when bad-flag
+               (error (format #f
+                              "Unrecognized flag '~a'"
+                              (car bad-flag))))
+             body ...))))))
+
 (define %cmd-handlers
   `(("enter" . ,item-enter)
     ("leave" . ,item-leave)
     ("span" . ,item-span)))
+
+;; Utility
+(define (list-any? p xs)
+  (match xs
+         (() #f)
+         ((x) (if (p x) x #f))
+         ((kar kdr ...)
+          (if (p kar)
+            kar
+            (list-any? p kdr)))))
