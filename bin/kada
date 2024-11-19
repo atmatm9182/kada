@@ -18,7 +18,7 @@ exec guile --no-auto-compile -e main -s "$0" "$@"
   (match-lambda
     ((program cmd rest ...)
      (match (assoc cmd %cmd-handlers)
-       (#f (error (format #f "Uncrecognized subcommand '~a'" cmd)))
+       (#f (error (format #f "Unrecognized subcommand '~a'" cmd)))
        ((_ . handler) (handler rest))))
     ((program rest ...)
      (error "No subcommand provided. Aborting."))))
