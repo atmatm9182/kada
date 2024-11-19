@@ -6,7 +6,9 @@
   #:export (db-insert-mark!
             db-create-span!
             db-query-mark
-            db-query-last-mark))
+            db-query-last-enter-mark
+
+            db-query-spans))
 
 ;;; Initialization code
 (define default-data-dir
@@ -56,9 +58,10 @@
                   "SELECT Name, Timestamp, Description, Enter FROM Marks
                    WHERE Name = ?"))
 
-(define db-prep-query-last-mark
+(define db-prep-query-last-enter-mark
   (sqlite-prepare db
                   "SELECT Name, Timestamp, Description, Enter from Marks
+                   WHERE Enter = 1
                    ORDER BY Timestamp DESC LIMIT 1"))
 
 (define db-prep-query-last-two-marks
@@ -71,6 +74,17 @@
   (sqlite-prepare db
                   "INSERT INTO Spans(Name, StartId, EndId)
                    VALUES (?, ?, ?)"))
+
+(define db-prep-query-spans
+  ;; NOTE: Use ascending order for the `ORDER BY' clause, since we will be
+  ;; prepending each row to the accumulator, and we want to have the latest
+  ;; spans come first
+  (sqlite-prepare db
+                  "SELECT s.Name, sm.Timestamp AS StartTs, em.Timestamp AS EndTs
+                  FROM Spans AS s
+                  JOIN Marks AS sm ON s.StartId = sm.Id
+                  JOIN Marks AS em ON s.EndId = em.Id
+                  ORDER BY StartTs ASC"))
 
 ;;; Procedures
 (define (use-prepared stmt . args)
@@ -122,10 +136,16 @@
                   (car fst)
                   (car snd))))
 
-(define (db-query-last-mark)
-  (match (use-prepared db-prep-query-last-mark)
+(define (db-query-last-enter-mark)
+  (match (use-prepared db-prep-query-last-enter-mark)
     (() #f)
     ((row) (mark-from-row row))))
+
+(define (db-query-spans)
+  (map (match-lambda
+         (#(name started ended)
+          (make-span name started ended)))
+       (use-prepared db-prep-query-spans)))
 
 ;; Utility procedures
 (define (bool-to-bit b)

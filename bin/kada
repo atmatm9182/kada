@@ -6,7 +6,7 @@ exec guile --no-auto-compile -e main -s "$0" "$@"
 
 (use-modules (ice-9 match)
              (ice-9 format)
-             (srfi srfi-9)
+             (srfi srfi-1)
              (kada db)
              (kada types))
 ;; (print
@@ -17,7 +17,7 @@ exec guile --no-auto-compile -e main -s "$0" "$@"
 (define main
   (match-lambda
     ((program cmd rest ...)
-     (match (assoc cmd *cmd-handlers*)
+     (match (assoc cmd %cmd-handlers)
        (#f (error (format #f "Uncrecognized subcommand '~a'" cmd)))
        ((_ . handler) (handler rest))))
     ((program rest ...)
@@ -32,7 +32,7 @@ exec guile --no-auto-compile -e main -s "$0" "$@"
     (format #t "Successfully created mark '~a'\n" name)))
 
 (define (item-leave args)
-  (let ((last-mark (db-query-last-mark)))
+  (let ((last-mark (db-query-last-enter-mark)))
     (when (eq? last-mark #f)
       (error "There are no marks"))
 
@@ -47,6 +47,19 @@ exec guile --no-auto-compile -e main -s "$0" "$@"
           (format #t "Successfully created mark and span '~a'\n" name))
         (error (format #f "Last mark with name '~a' is not an entry mark" name))))))
 
-(define *cmd-handlers*
+(define (item-span args)
+  (let* ((spans (db-query-spans))
+         (result (fold (lambda (span acc)
+                         (string-append acc
+                                        (span->string span)
+                                        "\n"))
+                       ""
+                       spans)))
+    (display (if (string-null? result)
+               "There are no spans"
+               result))))
+
+(define %cmd-handlers
   `(("enter" . ,item-enter)
-    ("leave" . ,item-leave)))
+    ("leave" . ,item-leave)
+    ("span" . ,item-span)))
