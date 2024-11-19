@@ -24,13 +24,6 @@
       (mkdir kada-dir)) ;; TODO: parent dirs
     (sqlite-open (string-append kada-dir "/kada.db"))))
 
-(define (db-init!)
-  (db-create-marks-table!)
-  (db-create-spans-table!))
-
-(db-init!)
-
-;;; Prepared queries
 (define (db-create-marks-table!)
   (sqlite-exec db "CREATE TABLE IF NOT EXISTS Marks (
                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -48,6 +41,13 @@
                    FOREIGN KEY(StartId) REFERENCES Marks(Id),
                    FOREIGN KEY(EndId) REFERENCES Marks(Id))"))
 
+(define (db-init!)
+  (db-create-marks-table!)
+  (db-create-spans-table!))
+
+(db-init!)
+
+;;; Prepared queries
 (define db-prep-insert-mark
   (sqlite-prepare db
                   "INSERT INTO Marks (Name, Timestamp, Description, Enter)
@@ -60,8 +60,10 @@
 
 (define db-prep-query-last-enter-mark
   (sqlite-prepare db
-                  "SELECT Name, Timestamp, Description, Enter from Marks
+                  "SELECT Name, Timestamp, Description, Enter from Marks AS m
                    WHERE Enter = 1
+                   AND
+                   (SELECT COUNT(*) FROM Spans WHERE StartId = m.Id) = 0
                    ORDER BY Timestamp DESC LIMIT 1"))
 
 (define db-prep-query-last-two-marks

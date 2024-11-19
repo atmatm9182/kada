@@ -61,7 +61,7 @@ exec guile --no-auto-compile -e main -s "$0" "$@"
   (let* ((name (car args))
          (last-mark (db-query-last-enter-mark))
          (mark (make-mark name (current-time) #f #t)))
-    (when (equal? (mark-name last-mark) name)
+    (when (and last-mark (equal? (mark-name last-mark) name))
       (error (format #f "Already entered span '~a'" name)))
 
     (db-insert-mark! mark)
@@ -73,7 +73,7 @@ exec guile --no-auto-compile -e main -s "$0" "$@"
   ()
   (let ((last-mark (db-query-last-enter-mark)))
     (when (eq? last-mark #f)
-      (error "There are no marks"))
+      (error "There are no active marks"))
 
     (let ((name (mark-name last-mark)))
       (if (mark-enter? last-mark)
