@@ -19,14 +19,45 @@ exec guile --no-auto-compile -e main -s "$0" "$@"
     ((program cmd rest ...)
      (match (assoc cmd %cmd-handlers)
        (#f (error (format #f "Unrecognized subcommand '~a'" cmd)))
-       ((_ . handler) (handler rest))))
+       ((_ . handler) (handler rest '()))))
     ((program rest ...)
      (error "No subcommand provided. Aborting."))))
 
-(define (item-enter args)
-  (when (not (= (length args) 1))
-    (error "Invalid number of arguments for 'enter'"))
+(define-syntax define-handler
+  (lambda (syn)
+    (syntax-case
+      syn ()
+      ((_ name args-check flags-spec body ...)
+       (with-syntax ((args (datum->syntax syn 'args))
+                     (flags (datum->syntax syn 'flags)))
+                    #`(define (name args flags)
+                        (unless
+                          #,(datum->syntax syn
+                                           (reverse
+                                             (cons
+                                               (syntax->datum #'(length args))
+                                               (reverse (syntax->datum #'args-check)))))
+                          (error "Invalid number of arguments"))
+                        (let* ((allowed-flags
+                                 #,(list #'quote
+                                         #'(syntax->datum flags-spec)))
+                               (bad-flag
+                                 (list-any? (match-lambda
+                                              ((flag . value)
+                                               (not (member
+                                                      flag
+                                                      allowed-flags))))
+                                            flags)))
+                          (when bad-flag
+                            (error (format #f
+                                           "Unrecognized flag '~a'"
+                                           (car bad-flag))))
+                          body ...)))))))
 
+(define-handler
+  item-enter
+  (= 1)
+  ()
   (let* ((name (car args))
          (last-mark (db-query-last-enter-mark))
          (mark (make-mark name (current-time) #f #t)))
@@ -36,7 +67,10 @@ exec guile --no-auto-compile -e main -s "$0" "$@"
     (db-insert-mark! mark)
     (format #t "Successfully created mark '~a'\n" name)))
 
-(define (item-leave args)
+(define-handler
+  item-leave
+  (= 0)
+  ()
   (let ((last-mark (db-query-last-enter-mark)))
     (when (eq? last-mark #f)
       (error "There are no marks"))
@@ -52,7 +86,10 @@ exec guile --no-auto-compile -e main -s "$0" "$@"
           (format #t "Successfully created mark and span '~a'\n" name))
         (error (format #f "Last mark with name '~a' is not an entry mark" name))))))
 
-(define (item-span args)
+(define-handler
+  item-span
+  (= 0)
+  ()
   (let* ((spans (db-query-spans))
          (result (fold (lambda (span acc)
                          (string-append acc
@@ -63,32 +100,6 @@ exec guile --no-auto-compile -e main -s "$0" "$@"
     (display (if (string-null? result)
                "There are no spans"
                result))))
-
-(define-syntax define-handler
-  (lambda (syn)
-    (syntax-case
-      syn ()
-      ((_ name args-check flags-spec body ...)
-       #`(define (name args flags)
-           (unless #,(datum->syntax #'syn
-                                    (reverse
-                                      (cons
-                                        (syntax->datum #'(length args))
-                                        (reverse (syntax->datum #'args-check)))))
-             (error "Invalid number of arguments"))
-           (let* ((allowed-flags #,(list #'quote
-                                         #'(syntax->datum flags-spec)))
-                  (bad-flag (list-any? (match-lambda
-                                         ((flag . value)
-                                          (not (member
-                                                 flag
-                                                 allowed-flags))))
-                                       flags)))
-             (when bad-flag
-               (error (format #f
-                              "Unrecognized flag '~a'"
-                              (car bad-flag))))
-             body ...))))))
 
 (define %cmd-handlers
   `(("enter" . ,item-enter)
