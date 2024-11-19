@@ -33,20 +33,20 @@
 ;;; Prepared queries
 (define (db-create-marks-table!)
   (sqlite-exec db "CREATE TABLE IF NOT EXISTS Marks (
-           Id INTEGER PRIMARY KEY AUTOINCREMENT,
-           Name TEXT NOT NULL,
-           Timestamp INTEGER DEFAULT (unixepoch()) NOT NULL,
-           Description TEXT,
-           Enter INTEGER NOT NULL)"))
+                   Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                   Name TEXT NOT NULL,
+                   Timestamp INTEGER DEFAULT (unixepoch()) NOT NULL,
+                   Description TEXT,
+                   Enter INTEGER NOT NULL)"))
 
 (define (db-create-spans-table!)
   (sqlite-exec db "CREATE TABLE IF NOT EXISTS Spans (
-           Id INTEGER PRIMARY KEY AUTOINCREMENT,
-           Name TEXT NOT NULL,
-           StartId INTEGER NOT NULL,
-           EndId INTEGER,
-           FOREIGN KEY(StartId) REFERENCES Marks(Id),
-           FOREIGN KEY(EndId) REFERENCES Marks(Id))"))
+                   Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                   Name TEXT NOT NULL,
+                   StartId INTEGER NOT NULL,
+                   EndId INTEGER,
+                   FOREIGN KEY(StartId) REFERENCES Marks(Id),
+                   FOREIGN KEY(EndId) REFERENCES Marks(Id))"))
 
 (define db-prep-insert-mark
   (sqlite-prepare db
