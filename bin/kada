@@ -43,8 +43,9 @@ exec guile --no-auto-compile -e main -s "$0" "$@"
                                      (current-time)
                                      #f
                                      #f))
-          (format #t "Successfully created mark '~a'\n" name))
-        (error "Last mark with name '~a' is not an entry mark" name)))))
+          (db-create-span! name)
+          (format #t "Successfully created mark and span '~a'\n" name))
+        (error (format #f "Last mark with name '~a' is not an entry mark" name))))))
 
 (define *cmd-handlers*
   `(("enter" . ,item-enter)

@@ -4,6 +4,7 @@
   #:use-module (sqlite3)
 
   #:export (db-insert-mark!
+            db-create-span!
             db-query-mark
             db-query-last-mark))
 
@@ -21,13 +22,13 @@
       (mkdir kada-dir)) ;; TODO: parent dirs
     (sqlite-open (string-append kada-dir "/kada.db"))))
 
-(db-init!)
-
-;;; Procedures
 (define (db-init!)
   (db-create-marks-table!)
   (db-create-spans-table!))
 
+(db-init!)
+
+;;; Prepared queries
 (define (db-create-marks-table!)
   (sqlite-exec db "CREATE TABLE IF NOT EXISTS Marks (
            Id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -60,6 +61,18 @@
                   "SELECT Name, Timestamp, Description, Enter from Marks
                    ORDER BY Timestamp DESC LIMIT 1"))
 
+(define db-prep-query-last-two-marks
+  (sqlite-prepare db
+                  "SELECT Name, Timestamp, Description, Enter, Id from Marks
+                   WHERE Name = ?
+                   ORDER BY Timestamp DESC LIMIT 2"))
+
+(define db-prep-query-insert-span
+  (sqlite-prepare db
+                  "INSERT INTO Spans(Name, StartId, EndId)
+                   VALUES (?, ?, ?)"))
+
+;;; Procedures
 (define (use-prepared stmt . args)
   (apply sqlite-bind-arguments stmt args)
   (define result (sqlite-fold cons '() stmt))
@@ -75,13 +88,39 @@
 
 (define (db-query-mark name)
   (match (use-prepared db-prep-query-mark name)
-    (() #f)
-    ((#(name timestamp description enter?) ...)
-     (map mark-from-row
-          name
-          timestamp
-          description
-          enter?))))
+         (() #f)
+         ((#(names timestamps descriptions enters?) ...)
+          (map mark-from-row
+               names
+               timestamps
+               descriptions
+               enters?))))
+
+(define (db-query-last-two-marks name)
+  (match (use-prepared db-prep-query-last-two-marks name)
+         (() #f)
+         ((single) #f)
+         ((rows ...) (map
+                       (lambda (row)
+                         (let* ((rov (reverse (vector->list row)))
+                                (mark (mark-from-row (reverse (cdr rov))))
+                                (id (car rov)))
+                           (cons id mark)))
+                         rows))))
+
+(define (db-create-span! name)
+  (let* ((ms (db-query-last-two-marks name))
+         (fst (car ms))
+         (snd (cadr ms))
+         (marks (cond
+                  ((and (mark-enter? (cdr fst)) (mark-enter? (cdr snd)))
+                   (error "Both '~a' marks are 'enter' marks"))
+                  ((mark-enter? (cdr fst)) (cons fst snd))
+                  (else (cons snd fst)))))
+    (use-prepared db-prep-query-insert-span
+                  name
+                  (car fst)
+                  (car snd))))
 
 (define (db-query-last-mark)
   (match (use-prepared db-prep-query-last-mark)
@@ -94,6 +133,11 @@
 
 (define mark-from-row
   (match-lambda
+    ((name timestamp description enter?)
+     (make-mark name
+                timestamp
+                description
+                (= enter? 1)))
     (#(name timestamp description enter?)
      (make-mark name
                 timestamp
