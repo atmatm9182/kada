@@ -20,8 +20,8 @@
                      ("" default-data-dir)
                      (dir dir)))
          (kada-dir (string-append data-dir "/kada")))
-    (when (not (file-exists? kada-dir))
-      (mkdir kada-dir)) ;; TODO: parent dirs
+    (unless (file-exists? kada-dir)
+      (mkdir-rec kada-dir))
     (sqlite-open (string-append kada-dir "/kada.db"))))
 
 (define (db-create-marks-table!)
@@ -165,3 +165,14 @@
                 timestamp
                 description
                 (= enter? 1)))))
+
+(define (mkdir-rec path)
+  (let loop ((parts (string-split path #\/))
+             (parent ""))
+    (match parts
+           (() #t)
+           ((dir rest ...)
+            (let ((dir (string-append parent "/" dir)))
+              (unless (file-exists? dir)
+                (mkdir dir))
+              (loop rest dir))))))
