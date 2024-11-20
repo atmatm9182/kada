@@ -10,10 +10,6 @@ exec guile --no-auto-compile -e main -s "$0" "$@"
              (srfi srfi-1)
              (kada db)
              (kada types))
-;; (print
-;;  (strftime "%c"
-;;            (localtime
-;;             (current-time))))
 
 (define opts-spec
   '((date (single-char #\d) (value #t))
