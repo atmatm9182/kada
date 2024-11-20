@@ -47,8 +47,8 @@ exec guile --no-auto-compile -e main -s "$0" "$@"
                                                (reverse (syntax->datum #'args-check)))))
                           (error "Invalid number of arguments"))
                         (let* ((allowed-flags
-                                 #,(list #'quote
-                                         #'(syntax->datum flags-spec)))
+                                 #,(datum->syntax syn (list #'quote
+                                         (syntax->datum #'flags-spec))))
                                (bad-flag
                                  (list-any? (match-lambda
                                               ((flag . value)
@@ -65,10 +65,13 @@ exec guile --no-auto-compile -e main -s "$0" "$@"
 (define-handler
   item-enter
   (= 1)
-  ()
-  (let* ((name (car args))
+  (date)
+  (let* ((time (or (and (assoc 'date flags)
+                        (parse-time-today (assoc-ref flags 'date)))
+                   (current-time)))
+         (name (car args))
          (last-mark (db-query-last-enter-mark))
-         (mark (make-mark name (current-time) #f #t)))
+         (mark (make-mark name time #f #t)))
     (when (and last-mark (equal? (mark-name last-mark) name))
       (error (format #f "Already entered span '~a'" name)))
 
@@ -123,3 +126,16 @@ exec guile --no-auto-compile -e main -s "$0" "$@"
           (if (p kar)
             kar
             (list-any? p kdr)))))
+
+(define (parse-time-today str)
+  (match-let*
+    (((hr-min . _) (strptime "%R" str))
+     (cur (localtime (current-time))))
+    (set-tm:hour
+      cur
+      (tm:hour hr-min))
+    (set-tm:min
+      cur
+      (tm:min hr-min))
+    (car (mktime cur))))
+
