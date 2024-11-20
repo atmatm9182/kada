@@ -6,6 +6,7 @@ exec guile --no-auto-compile -e main -s "$0" "$@"
 
 (use-modules (ice-9 match)
              (ice-9 format)
+             (ice-9 getopt-long)
              (srfi srfi-1)
              (kada db)
              (kada types))
@@ -14,14 +15,25 @@ exec guile --no-auto-compile -e main -s "$0" "$@"
 ;;            (localtime
 ;;             (current-time))))
 
+(define opts-spec
+  '((date (single-char #\d) (value #t))
+    (rev (single-char #\r) (value #f))))
+
 (define main
   (match-lambda
-    ((program cmd rest ...)
-     (match (assoc cmd %cmd-handlers)
-       (#f (error (format #f "Unrecognized subcommand '~a'" cmd)))
-       ((_ . handler) (handler rest '()))))
-    ((program rest ...)
-     (error "No subcommand provided. Aborting."))))
+    ((_)
+     (error "No subcommand provided. Aborting."))
+    ((all-args ...)
+     (let* ((opts (getopt-long all-args opts-spec))
+            (args (cdar opts)))
+       (when (null? args)
+         (error (format #f "No subcommand provided")))
+
+       (match-let
+         (((cmd args ...) args))
+         (match (assoc cmd %cmd-handlers)
+                (#f (error (format #f "Unrecognized subcommand '~a'" cmd)))
+                ((_ . handler) (handler args (cdr opts)))))))))
 
 (define-syntax define-handler
   (lambda (syn)
