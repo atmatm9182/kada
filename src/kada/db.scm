@@ -7,6 +7,7 @@
             db-create-span!
             db-query-mark
             db-query-last-enter-mark
+            db-query-lone-marks
 
             db-query-spans))
 
@@ -88,6 +89,16 @@
                   JOIN Marks AS em ON s.EndId = em.Id
                   ORDER BY StartTs ASC"))
 
+(define db-prep-query-lone-marks
+  (sqlite-prepare db
+                  "SELECT Name, Timestamp, Description
+                  FROM Marks AS m
+                  WHERE Enter = 1
+                  AND
+                  (SELECT COUNT(*)
+                   FROM Spans AS s
+                   WHERE m.Id = s.StartId) = 0;"))
+
 ;;; Procedures
 (define (use-prepared stmt . args)
   (apply sqlite-bind-arguments stmt args)
@@ -135,8 +146,8 @@
                   (else (cons snd fst)))))
     (use-prepared db-prep-query-insert-span
                   name
-                  (car fst)
-                  (car snd))))
+                  (caar marks)
+                  (cdar marks))))
 
 (define (db-query-last-enter-mark)
   (match (use-prepared db-prep-query-last-enter-mark)
@@ -148,6 +159,12 @@
          (#(name started ended)
           (make-span name started ended)))
        (use-prepared db-prep-query-spans)))
+
+(define (db-query-lone-marks)
+  (map (match-lambda
+         (#(name timestamp description)
+         (make-mark name timestamp description #t)))
+       (use-prepared db-prep-query-lone-marks)))
 
 ;; Utility procedures
 (define (bool-to-bit b)

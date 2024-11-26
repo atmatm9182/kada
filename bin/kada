@@ -98,24 +98,32 @@ exec guile --no-auto-compile -e main -s "$0" "$@"
         (error (format #f "Last mark with name '~a' is not an entry mark" name))))))
 
 (define-handler
-  item-span
+  span
   (= 0)
   ()
   (let* ((spans (db-query-spans))
-         (result (fold (lambda (span acc)
+         (lone (db-query-lone-marks))
+         (spans (fold (lambda (span acc)
                          (string-append acc
                                         (span->string span)
                                         "\n"))
                        ""
-                       spans)))
-    (display (if (string-null? result)
-               "There are no spans"
-               result))))
+                       spans))
+         (marks (fold (lambda (mark acc)
+                        (string-append acc
+                                       (format #f "~a and going : ~a\n"
+                                               (strftime "%c" (localtime (mark-timestamp mark)))
+                                               (mark-name mark))))
+                      ""
+                      lone)))
+    (display marks)
+    (newline)
+    (display spans)))
 
 (define %cmd-handlers
   `(("enter" . ,item-enter)
     ("leave" . ,item-leave)
-    ("span" . ,item-span)))
+    ("span" . ,span)))
 
 ;; Utility
 (define (list-any? p xs)
