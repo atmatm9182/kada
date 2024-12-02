@@ -71,7 +71,7 @@ exec guile --no-auto-compile -e main -s "$0" "$@"
                    (current-time)))
          (name (car args))
          (last-mark (db-query-last-enter-mark))
-         (mark (make-mark name time #f #t)))
+         (mark (make-mark 0 name time #f #t)))
     (when (and last-mark (equal? (mark-name last-mark) name))
       (error (format #f "Already entered span '~a'" name)))
 
@@ -82,18 +82,20 @@ exec guile --no-auto-compile -e main -s "$0" "$@"
   item-leave
   (= 0)
   ()
-  (let ((last-mark (db-query-last-enter-mark)))
-    (when (eq? last-mark #f)
+  (let ((start-mark (db-query-last-enter-mark)))
+    (when (eq? start-mark #f)
       (error "There are no active marks"))
 
-    (let ((name (mark-name last-mark)))
-      (if (mark-enter? last-mark)
-        (begin
-          (db-insert-mark! (make-mark name
-                                     (current-time)
-                                     #f
-                                     #f))
-          (db-create-span! name)
+    (let* ((name (mark-name start-mark))
+           (end-mark (make-mark 0
+                                name
+                                (current-time)
+                                #f
+                                #f)))
+      (if (mark-enter? start-mark)
+        (let ((inserted-id (db-insert-mark! end-mark)))
+          (mark-set-id! end-mark inserted-id)
+          (db-create-span! start-mark end-mark)
           (format #t "Successfully created mark and span '~a'\n" name))
         (error (format #f "Last mark with name '~a' is not an entry mark" name))))))
 

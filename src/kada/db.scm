@@ -52,26 +52,21 @@
 (define db-prep-insert-mark
   (sqlite-prepare db
                   "INSERT INTO Marks (Name, Timestamp, Description, Enter)
-                   VALUES (?, ?, ?, ?)"))
+                   VALUES (?, ?, ?, ?)
+                   RETURNING Id"))
 
 (define db-prep-query-mark
   (sqlite-prepare db
-                  "SELECT Name, Timestamp, Description, Enter FROM Marks
+                  "SELECT Id, Name, Timestamp, Description, Enter FROM Marks
                    WHERE Name = ?"))
 
 (define db-prep-query-last-enter-mark
   (sqlite-prepare db
-                  "SELECT Name, Timestamp, Description, Enter from Marks AS m
+                  "SELECT Id, Name, Timestamp, Description, Enter from Marks AS m
                    WHERE Enter = 1
                    AND
                    (SELECT COUNT(*) FROM Spans WHERE StartId = m.Id) = 0
                    ORDER BY Timestamp DESC LIMIT 1"))
-
-(define db-prep-query-last-two-marks
-  (sqlite-prepare db
-                  "SELECT Name, Timestamp, Description, Enter, Id from Marks
-                   WHERE Name = ?
-                   ORDER BY Timestamp DESC LIMIT 2"))
 
 (define db-prep-query-insert-span
   (sqlite-prepare db
@@ -91,7 +86,7 @@
 
 (define db-prep-query-lone-marks
   (sqlite-prepare db
-                  "SELECT Name, Timestamp, Description
+                  "SELECT Id, Name, Timestamp, Description
                   FROM Marks AS m
                   WHERE Enter = 1
                   AND
@@ -107,47 +102,28 @@
   result)
 
 (define (db-insert-mark! mark)
-  (use-prepared db-prep-insert-mark
+  (match (use-prepared db-prep-insert-mark
                 (mark-name mark)
                 (mark-timestamp mark)
                 (mark-description mark)
-                (bool-to-bit (mark-enter? mark))))
+                (bool-to-bit (mark-enter? mark)))
+         ((#(id)) id)))
 
 (define (db-query-mark name)
   (match (use-prepared db-prep-query-mark name)
          (() #f)
-         ((#(names timestamps descriptions enters?) ...)
+         ((#(ids names timestamps descriptions enters?) ...)
           (map mark-from-row
                names
                timestamps
                descriptions
                enters?))))
 
-(define (db-query-last-two-marks name)
-  (match (use-prepared db-prep-query-last-two-marks name)
-         (() #f)
-         ((single) #f)
-         ((rows ...) (map
-                       (lambda (row)
-                         (let* ((rov (reverse (vector->list row)))
-                                (mark (mark-from-row (reverse (cdr rov))))
-                                (id (car rov)))
-                           (cons id mark)))
-                         rows))))
-
-(define (db-create-span! name)
-  (let* ((ms (db-query-last-two-marks name))
-         (fst (car ms))
-         (snd (cadr ms))
-         (marks (cond
-                  ((and (mark-enter? (cdr fst)) (mark-enter? (cdr snd)))
-                   (error "Both '~a' marks are 'enter' marks"))
-                  ((mark-enter? (cdr fst)) (cons fst snd))
-                  (else (cons snd fst)))))
+(define (db-create-span! start end)
     (use-prepared db-prep-query-insert-span
-                  name
-                  (caar marks)
-                  (cdar marks))))
+                  (mark-name start)
+                  (mark-id start)
+                  (mark-id end)))
 
 (define (db-query-last-enter-mark)
   (match (use-prepared db-prep-query-last-enter-mark)
@@ -162,8 +138,8 @@
 
 (define (db-query-lone-marks)
   (map (match-lambda
-         (#(name timestamp description)
-         (make-mark name timestamp description #t)))
+         (#(id name timestamp description)
+         (make-mark id name timestamp description #t)))
        (use-prepared db-prep-query-lone-marks)))
 
 ;; Utility procedures
@@ -172,13 +148,15 @@
 
 (define mark-from-row
   (match-lambda
-    ((name timestamp description enter?)
-     (make-mark name
+    ((id name timestamp description enter?)
+     (make-mark id
+                name
                 timestamp
                 description
                 (= enter? 1)))
-    (#(name timestamp description enter?)
-     (make-mark name
+    (#(id name timestamp description enter?)
+     (make-mark id
+                name
                 timestamp
                 description
                 (= enter? 1)))))

@@ -2,10 +2,13 @@
   #:use-module ((srfi srfi-9))
   #:export (make-mark
             mark?
+            mark-id
             mark-name
             mark-timestamp
             mark-description
             mark-enter?
+
+            mark-set-id!
 
             make-span
             span-name
@@ -14,8 +17,9 @@
             span->string))
 
 (define-record-type <mark>
-  (make-mark name timestamp description enter?)
+  (make-mark id name timestamp description enter?)
   mark?
+  (id mark-id mark-set-id!)
   (name mark-name)
   (timestamp mark-timestamp)
   (description mark-description)
