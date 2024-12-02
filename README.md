@@ -1,15 +1,15 @@
-* Kada
+# Kada
 A tool to track my flexible work schedule, because i always forget when and for how long I work.
 
-** Quick start
+## Quick start
 Using guix:
 
-#+BEGIN_SRC sh
+```sh
 guix package -f guix.scm
-#+END_SRC
+```
 
-** Todo
-- [-] Basic entry and span creation subcommands
+# Todo
+- [X] Basic entry and span creation subcommands
 - [X] Store the DB file in a human location
 - [ ] Visualize spans with subspans
 - [ ] Export data
