@@ -3,7 +3,9 @@
   #:use-module (kada types)
   #:use-module (sqlite3)
 
-  #:export (db-insert-mark!
+  #:export (db-init!
+
+            db-insert-mark!
             db-create-span!
             db-query-mark
             db-query-last-enter-mark
@@ -67,60 +69,59 @@
   (db-create-marks-table!)
   (db-create-spans-table!))
 
-(db-init!)
-
 ;;; Prepared queries
-(define db-prep-insert-mark
-  (sqlite-prepare db
-                  "INSERT INTO Marks (Name, Timestamp, Description, Enter)
+(define-syntax define-prepared
+  (syntax-rules ()
+    ((_ name query)
+     (define name
+       (delay (sqlite-prepare db query))))))
+
+(define-prepared db-prep-insert-mark
+  "INSERT INTO Marks (Name, Timestamp, Description, Enter)
                    VALUES (?, ?, ?, ?)
-                   RETURNING Id"))
+                   RETURNING Id")
 
-(define db-prep-query-mark
-  (sqlite-prepare db
-                  "SELECT Id, Name, Timestamp, Description, Enter FROM Marks
-                   WHERE Name = ?"))
+(define-prepared db-prep-query-mark
+  "SELECT Id, Name, Timestamp, Description, Enter FROM Marks
+                   WHERE Name = ?")
 
-(define db-prep-query-last-enter-mark
-  (sqlite-prepare db
-                  "SELECT Id, Name, Timestamp, Description, Enter from Marks AS m
+(define-prepared db-prep-query-last-enter-mark
+  "SELECT Id, Name, Timestamp, Description, Enter from Marks AS m
                    WHERE Enter = 1
                    AND
                    (SELECT COUNT(*) FROM Spans WHERE StartId = m.Id) = 0
-                   ORDER BY Timestamp DESC LIMIT 1"))
+                   ORDER BY Timestamp DESC LIMIT 1")
 
-(define db-prep-query-insert-span
-  (sqlite-prepare db
-                  "INSERT INTO Spans(Name, StartId, EndId)
-                   VALUES (?, ?, ?)"))
+(define-prepared db-prep-query-insert-span
+  "INSERT INTO Spans(Name, StartId, EndId)
+                   VALUES (?, ?, ?)")
 
-(define db-prep-query-spans
+(define-prepared db-prep-query-spans
   ;; NOTE: Use ascending order for the `ORDER BY' clause, since we will be
   ;; prepending each row to the accumulator, and we want to have the latest
   ;; spans come first
-  (sqlite-prepare db
-                  "SELECT s.Name, sm.Timestamp AS StartTs, em.Timestamp AS EndTs
+  "SELECT s.Name, sm.Timestamp AS StartTs, em.Timestamp AS EndTs
                   FROM Spans AS s
                   JOIN Marks AS sm ON s.StartId = sm.Id
                   JOIN Marks AS em ON s.EndId = em.Id
-                  ORDER BY StartTs ASC"))
+                  ORDER BY StartTs ASC")
 
-(define db-prep-query-lone-marks
-  (sqlite-prepare db
-                  "SELECT Id, Name, Timestamp, Description
+(define-prepared db-prep-query-lone-marks
+  "SELECT Id, Name, Timestamp, Description
                   FROM Marks AS m
                   WHERE Enter = 1
                   AND
                   (SELECT COUNT(*)
                    FROM Spans AS s
-                   WHERE m.Id = s.StartId) = 0;"))
+                   WHERE m.Id = s.StartId) = 0;")
 
 ;;; Procedures
 (define (use-prepared stmt . args)
-  (apply sqlite-bind-arguments stmt args)
-  (define result (sqlite-fold cons '() stmt))
-  (sqlite-reset stmt)
-  result)
+  (let ((stmt (force stmt)))
+    (apply sqlite-bind-arguments stmt args)
+    (define result (sqlite-fold cons '() stmt))
+    (sqlite-reset stmt)
+    result))
 
 (define (db-insert-mark! mark)
   (match (use-prepared db-prep-insert-mark

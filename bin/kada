@@ -39,10 +39,11 @@ exec guile --no-auto-compile -e main -s "$0" "$@"
        (with-syntax ((args (datum->syntax syn 'args))
                      (flags (datum->syntax syn 'flags)))
                     #`(define (name args flags)
+                        (db-init!)
                         (unless
-                          #,(datum->syntax syn
-                                           (reverse
-                                             (cons
+                            #,(datum->syntax syn
+                                             (reverse
+                                              (cons
                                                (syntax->datum #'(length args))
                                                (reverse (syntax->datum #'args-check)))))
                           (error "Invalid number of arguments"))
