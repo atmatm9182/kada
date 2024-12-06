@@ -130,8 +130,7 @@ exec guile --no-auto-compile -e main -s "$0" "$@"
   ()
   (begin
     (let ((spans (db-query-spans)))
-      (display (serialize-to-csv spans))
-      (newline))))
+      (display (serialize-to-csv spans)))))
 
 (define %cmd-handlers
   `(("enter" . ,item-enter)
