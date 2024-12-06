@@ -9,6 +9,7 @@ exec guile --no-auto-compile -e main -s "$0" "$@"
              (ice-9 getopt-long)
              (srfi srfi-1)
              (kada db)
+             (kada serialize)
              (kada types))
 
 (define opts-spec
@@ -123,10 +124,20 @@ exec guile --no-auto-compile -e main -s "$0" "$@"
     (newline)
     (display spans)))
 
+(define-handler
+  csv
+  (= 0)
+  ()
+  (begin
+    (let ((spans (db-query-spans)))
+      (display (serialize-to-csv spans))
+      (newline))))
+
 (define %cmd-handlers
   `(("enter" . ,item-enter)
     ("leave" . ,item-leave)
-    ("span" . ,span)))
+    ("span" . ,span)
+    ("csv" . ,csv)))
 
 ;; Utility
 (define (list-any? p xs)
@@ -149,4 +160,3 @@ exec guile --no-auto-compile -e main -s "$0" "$@"
       cur
       (tm:min hr-min))
     (car (mktime cur))))
-
