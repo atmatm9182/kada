@@ -15,15 +15,36 @@
 (define default-data-dir
   (string-append (getenv "HOME") "/.local/share"))
 
+(define (mkdir-rec path)
+  (let loop ((parts (string-split path #\/))
+             (parent ""))
+    (match parts
+      (() #t)
+      ((dir rest ...)
+       (let ((dir (string-append parent "/" dir)))
+         (unless (file-exists? dir)
+           (display dir)
+           (newline)
+           (mkdir dir))
+         (loop rest dir))))))
+
 (define db
-  (let* ((data-dir (match (getenv "XDG_DATA_DIR")
-                     (#f default-data-dir)
-                     ("" default-data-dir)
-                     (dir dir)))
-         (kada-dir (string-append data-dir "/kada")))
-    (unless (file-exists? kada-dir)
-      (mkdir-rec kada-dir))
-    (sqlite-open (string-append kada-dir "/kada.db"))))
+  (with-exception-handler
+   (lambda (ex)
+     (format (current-error-port)
+             "Could not create the database: ~s"
+             ex)
+     #f)
+   (lambda ()
+     (let* ((data-dir (match (getenv "XDG_DATA_DIR")
+                        (#f default-data-dir)
+                        ("" default-data-dir)
+                        (dir dir)))
+            (kada-dir (string-append data-dir "/kada")))
+       (unless (file-exists? kada-dir)
+         (mkdir-rec kada-dir))
+       (sqlite-open (string-append kada-dir "/kada.db"))))
+   #:unwind? #t))
 
 (define (db-create-marks-table!)
   (sqlite-exec db "CREATE TABLE IF NOT EXISTS Marks (
@@ -160,14 +181,3 @@
                 timestamp
                 description
                 (= enter? 1)))))
-
-(define (mkdir-rec path)
-  (let loop ((parts (string-split path #\/))
-             (parent ""))
-    (match parts
-           (() #t)
-           ((dir rest ...)
-            (let ((dir (string-append parent "/" dir)))
-              (unless (file-exists? dir)
-                (mkdir dir))
-              (loop rest dir))))))
